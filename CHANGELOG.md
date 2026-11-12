@@ -2,6 +2,11 @@
 
 All notable changes to Hourglass are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+- Time kept counting after switching to another workspace on GNOME (Wayland), because the browser still reported its window as focused. Hourglass now also pauses when the page is hidden.
+
 ## [1.1.0] - 2026-11-12
 
 ### Added

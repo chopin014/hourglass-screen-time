@@ -45,6 +45,9 @@ async function detectActive() {
   }
   if (!win || !win.focused) return none;
   const [tab] = await api.tabs.query({ active: true, windowId: win.id });
+  // The window can still claim focus while it's on another workspace; the page knows better.
+  const { hiddenTabs } = await api.storage.session.get('hiddenTabs');
+  if (tab && hiddenTabs?.[tab.id]) return none;
   const idle = await api.idle.queryState(IDLE_SECONDS);
   const browserActive = idle === 'active' || !!tab?.audible;
   if (!browserActive) return none;
@@ -502,8 +505,20 @@ async function status(domain) {
 const kick = () => serial(tick);
 
 api.tabs.onActivated.addListener(kick);
+// Pages report when they're hidden (see notify-bridge.js). Pages that can't run
+// content scripts never report, so a new document starts out as "visible".
+async function setTabHidden(tabId, hidden) {
+  const { hiddenTabs = {} } = await api.storage.session.get('hiddenTabs');
+  if (!!hiddenTabs[tabId] === hidden) return false;
+  if (hidden) hiddenTabs[tabId] = true;
+  else delete hiddenTabs[tabId];
+  await api.storage.session.set({ hiddenTabs });
+  return true;
+}
+
 api.tabs.onRemoved.addListener(async (tabId) => {
   recentlyBlocked.delete(tabId);
+  serial(() => setTabHidden(tabId, false));
   const { passes, childTabs } = await getPasses();
   if (passes[tabId] || childTabs[tabId]) {
     delete passes[tabId];
@@ -541,6 +556,7 @@ api.webNavigation.onHistoryStateUpdated.addListener(checkNavigation);
 // After redirects (youtu.be → /watch, share links → post), pin the pass to the final content.
 api.webNavigation.onCommitted.addListener(async (details) => {
   if (details.frameId !== 0) return;
+  if (!/^https?:/.test(details.url)) serial(() => setTabHidden(details.tabId, false));
   const { passes } = await getPasses();
   const pass = passes[details.tabId];
   if (!pass || pass.graceUntil <= Date.now()) return;
@@ -583,6 +599,11 @@ api.runtime.onMessage.addListener((msg, sender) => {
     case 'directLink':
       if (!sender.tab?.id) return Promise.resolve({ ok: false, error: 'tab' });
       return serial(() => grantDirectLink(sender.tab.id, msg));
+    case 'visibility':
+      if (sender.tab?.id == null || sender.frameId) return undefined;
+      return serial(async () => {
+        if (await setTabHidden(sender.tab.id, !!msg.hidden)) await tick();
+      });
     case 'verifyPasscode':
       return getSettings().then((s) => checkPasscode(s, msg.code));
     case 'notification': {

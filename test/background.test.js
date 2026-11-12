@@ -54,6 +54,24 @@ test('idle and unfocused time is not counted; coming back is a pickup', async ()
   await settle();
 });
 
+test('a hidden page is not counted even if the window still claims focus', async () => {
+  // GNOME/Wayland: after switching workspaces the window stays "focused" but the page is hidden.
+  advance(10);
+  await heartbeat();
+  const before = today().sites['youtube.com'];
+  await send({ type: 'visibility', hidden: true });
+  await settle();
+  advance(300);
+  await heartbeat();
+  assert.ok(today().sites['youtube.com'] - before < 0.01, `counted hidden time: ${today().sites['youtube.com'] - before}`);
+  await send({ type: 'visibility', hidden: false });
+  await settle();
+  advance(30);
+  await heartbeat();
+  assert.ok(Math.abs(today().sites['youtube.com'] - before - 30) < 0.01);
+  assert.deepEqual(state.session.hiddenTabs ?? {}, {});
+});
+
 test('time check notification and blocking at end of allowance', async () => {
   const settings = structuredClone(state.local.settings);
   settings.allowanceItems.find((i) => i.id === 'entertainment').limit = 5;
