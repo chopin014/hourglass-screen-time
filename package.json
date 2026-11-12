@@ -1,0 +1,29 @@
+{
+  "name": "hourglass-screen-time",
+  "version": "1.1.0",
+  "type": "module",
+  "description": "Screen Time for your browser: activity reports, Time Allowances, Screen Time Schedule, Direct Links and a live on-page timer.",
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "lint": "web-ext lint --ignore-files \"test/**\" \"scripts/**\" \"docs/**\" \"dist/**\" package.json package-lock.json",
+    "build": "web-ext build --overwrite-dest --filename \"hourglass-{version}.xpi\" --ignore-files \"test\" \"test/**\" \"scripts\" \"scripts/**\" \"docs\" \"docs/**\" \"dist\" \"dist/**\" package.json package-lock.json README.md CHANGELOG.md",
+    "start": "web-ext run"
+  },
+  "license": "MIT",
+  "author": "chopin014",
+  "homepage": "https://github.com/chopin014/hourglass-screen-time#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chopin014/hourglass-screen-time.git"
+  },
+  "bugs": {
+    "url": "https://github.com/chopin014/hourglass-screen-time/issues"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "private": true,
+  "devDependencies": {
+    "web-ext": "^8.3.0"
+  }
+}

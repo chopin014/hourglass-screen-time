@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Time Allowance</title>
+  <link rel="icon" href="../../icons/icon-32.png">
+  <link rel="stylesheet" href="ios.css">
+  <style>
+    :root { color-scheme: dark; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      background: #1c1c1e;
+      color: #fff;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      position: relative;
+    }
+    /* CSS fallback for the glow, used until the canvas is drawn. */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: -2;
+      background:
+        radial-gradient(70% 60% at 18% 12%,
+          rgba(150, 110, 80, 0.30) 0%, rgba(150, 110, 80, 0.22) 20%, rgba(150, 110, 80, 0.12) 42%,
+          rgba(150, 110, 80, 0.05) 62%, rgba(150, 110, 80, 0) 80%),
+        radial-gradient(65% 55% at 85% 88%,
+          rgba(80, 80, 140, 0.32) 0%, rgba(80, 80, 140, 0.22) 22%, rgba(80, 80, 140, 0.11) 45%,
+          rgba(80, 80, 140, 0.04) 65%, rgba(80, 80, 140, 0) 82%),
+        #1c1c1e;
+    }
+    /* Dithered canvas version of the glow (drawn by blocked.js) — no 8-bit banding rings. */
+    #backdrop { position: fixed; inset: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
+    .wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      width: 100%;
+      max-width: 460px;
+      padding: 24px;
+      animation: rise 0.45s cubic-bezier(0.2, 0.9, 0.25, 1) both;
+    }
+    @keyframes rise { from { opacity: 0; transform: translateY(10px) scale(0.98); } to { opacity: 1; transform: none; } }
+    .symbol { font-size: 84px; color: #3a82f7; margin-bottom: 26px; --glyph-cut: #1c1c1e; }
+    .symbol.red { color: #ff453a; }
+    h1 { margin: 0; font-size: 30px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; }
+    p.msg { margin: 8px 0 0; font-size: 19px; line-height: 1.35; color: rgba(235, 235, 245, 0.62); max-width: 380px; }
+    .site-chip {
+      margin-top: 26px;
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      height: 36px;
+      padding: 0 14px 0 5px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.07);
+      border: 0.5px solid rgba(255, 255, 255, 0.08);
+      color: rgba(235, 235, 245, 0.75);
+      font-size: 15px;
+      line-height: 1;
+    }
+    .site-chip:empty { display: none; }
+    .site-chip .tile { --size: 26px; border-radius: 13px; }
+    .extra { margin-top: 12px; font-size: 14px; color: rgba(235, 235, 245, 0.45); min-height: 18px; }
+    .btns { width: 100%; max-width: 320px; display: flex; flex-direction: column; gap: 12px; margin-top: 44px; }
+    .btns button {
+      height: 54px;
+      border-radius: 27px;
+      font-size: 17px;
+      font-weight: 600;
+      color: #fff;
+      transition: transform 0.12s, filter 0.12s;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 6px 20px rgba(0, 0, 0, 0.25);
+    }
+    .btns button:active { transform: scale(0.97); }
+    .btns button:focus-visible { outline: 2px solid rgba(255, 255, 255, 0.8); outline-offset: 3px; }
+    .btns .ok { background: linear-gradient(180deg, #4b93fa, #3a82f7); }
+    .btns .ignore { background: rgba(120, 120, 128, 0.32); font-weight: 500; backdrop-filter: blur(20px); border: 0.5px solid rgba(255, 255, 255, 0.1); }
+    .btns button:hover { filter: brightness(1.08); }
+    .btns button .glyph { display: inline-block; vertical-align: -3px; margin-right: 8px; font-size: 18px; }
+    /* When a direct link is offered it becomes the primary action. */
+    .btns.has-direct .ok#ok { background: rgba(120, 120, 128, 0.32); font-weight: 500; border: 0.5px solid rgba(255, 255, 255, 0.1); }
+    .btns.has-direct .ignore { background: none; box-shadow: none; border: 0; height: 40px; color: rgba(235, 235, 245, 0.6); font-weight: 500; }
+    .direct-note { margin-top: 16px; font-size: 14px; line-height: 1.4; color: rgba(235, 235, 245, 0.5); max-width: 340px; min-height: 20px; }
+    .home-indicator { display: none; }
+    /* Phone-sized windows: iOS layout with the buttons at the bottom. */
+    @media (max-width: 520px) and (min-height: 640px) {
+      body { place-items: stretch; }
+      .wrap { justify-content: center; padding-bottom: 150px; }
+      .btns { position: fixed; left: 50%; bottom: 44px; transform: translateX(-50%); width: calc(100% - 48px); margin: 0; }
+      .home-indicator { display: block; position: fixed; left: 50%; bottom: 10px; transform: translateX(-50%); width: 140px; height: 5px; border-radius: 3px; background: rgba(255, 255, 255, 0.85); }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="backdrop" aria-hidden="true"></canvas>
+  <div class="wrap">
+    <div class="symbol" id="symbol"></div>
+    <h1 id="title">Time Allowance</h1>
+    <p class="msg" id="msg"></p>
+    <div class="site-chip" id="site"></div>
+    <div class="extra tnum" id="extra"></div>
+    <div class="btns">
+      <button class="ok hidden" id="direct"></button>
+      <button class="ok" id="ok">OK</button>
+      <button class="ignore" id="ignore">Ignore Limit</button>
+    </div>
+    <div class="direct-note" id="directNote"></div>
+  </div>
+  <div class="home-indicator" aria-hidden="true"></div>
+  <script type="module" src="blocked.js"></script>
+</body>
+</html>
