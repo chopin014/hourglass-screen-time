@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/screenshots/hero.png" alt="Hourglass: Screen Time for your browser" width="100%">
+  <img src="docs/screenshots/banner.png" alt="Hourglass: Screen Time for your browser" width="100%">
 </p>
 
 <h1 align="center">Hourglass</h1>
